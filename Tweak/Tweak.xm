@@ -10,6 +10,8 @@ static NSMutableArray *bcCaptureSessions = [[NSMutableArray alloc] initWithCapac
 static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapacity:250];
 
 %hookf(OSStatus, AudioUnitProcess, AudioUnit unit, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    OSStatus orig = %orig;
+
     if (bcActive) {
         AudioComponentDescription unitDescription = {0};
         AudioComponentGetDescription(AudioComponentInstanceGetComponent(unit), &unitDescription);
@@ -19,14 +21,16 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
             if (inNumberFrames > 0) {
                 inNumberFrames = 1;
                 for (int i = 0; i < (*ioData).mNumberBuffers; i++) {
-                    (*ioData).mBuffers[i].mDataByteSize = sizeof(float);
-                    (*ioData).mBuffers[i].mData = (float *)malloc(sizeof(float));
+                    float *buffer = (float *)(*ioData).mBuffers[i].mData;
+                    for (int j = 0; j < (*ioData).mBuffers[i].mDataByteSize/sizeof(float); j++) {
+                        buffer[j] = 0.0;
+                    }
                 }
             }
         }
     }
 
-    return %orig;
+    return orig;
 }
 
 @interface CLLocationManager(BegoneCIA)
@@ -111,26 +115,26 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
         [bcCaptureSessions addObject:self];
     }
     
-    //if ([arg1 isKindOfClass:[AVCaptureDeviceInput class]]) {
-        //AVCaptureDeviceInput *input = (AVCaptureDeviceInput *)arg1;
-        //AVCaptureDevice *device = [input device];
+    if ([arg1 isKindOfClass:[AVCaptureDeviceInput class]]) {
+        AVCaptureDeviceInput *input = (AVCaptureDeviceInput *)arg1;
+        AVCaptureDevice *device = [input device];
 
         // We only want to block camera streams.
         // Microphone streams are properly handled by the mediaserverd hook.
         // I should hook the .mediacapture instead, but for now this will work.
 
         // Welp, it doesn't do what I wanted it to do, sadly.
-        //if ([device hasMediaType:AVMediaTypeVideo] || [device hasMediaType:AVMediaTypeMuxed]) {
+        if ([device hasMediaType:AVMediaTypeVideo] || [device hasMediaType:AVMediaTypeMuxed]) {
             if (![self.bcInputs containsObject:arg1]) [self.bcInputs addObject:arg1];
 
             if (!bcActive) {
                 %orig;
             }
-            //return;
-        //}
-    //}
+            return;
+        }
+    }
 
-    //%orig;
+    %orig;
 }
 
 -(void)removeInput:(id)arg1 {
