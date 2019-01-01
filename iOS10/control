@@ -1,6 +1,6 @@
 Package: me.nepeta.begonecia-10
 Name: BegoneCIA (iOS 10 and 9)
-Version: 0.1.0
+Version: 0.1.1
 Architecture: iphoneos-arm
 Description: CC toggle to disable microphone, camera and GPS.
 Depends: mobilesubstrate, com.a3tweaks.flipswitch, ws.hbang.common (>= 1.11), firmware (>= 9.0), firmware (<= 10.3.3)
