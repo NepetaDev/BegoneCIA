@@ -62,6 +62,7 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
 
 -(void)setDelegate:(id)arg1 {
     // If we remove the delegate then that given app won't receive location updates.
+    // TODO: [maybe] send fake updates to the delegate, proper GPS spoof in a future update?
 
     if (arg1) self.bcDelegate = arg1;
     
@@ -78,7 +79,7 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
 
 -(CLLocation *)location {
     if (bcActive) {
-        return NULL;
+        return [[CLLocation alloc] initWithLatitude:0.0 longitude:0.0];
     } else {
         return %orig;
     }
