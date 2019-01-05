@@ -1,4 +1,5 @@
 #import "Preferences.h"
+#import <AppList/AppList.h>
 
 @implementation BCPrefsListController
 - (instancetype)init {

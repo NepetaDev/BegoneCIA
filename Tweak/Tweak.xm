@@ -5,8 +5,13 @@
 #import <AVFoundation/AVFoundation.h>
 #import "../BCCommon.h"
 #import <UIKit/UIButton.h>
+#import <SpringBoard/SBApplication.h>
+#import <SpringBoard/SpringBoard.h>
 
-static BOOL bcActive = true;
+static BOOL bcActive = false;
+static BOOL bcMSDForceDisable = false;
+static BOOL isMSD = false;
+static BOOL isSpringboard = false;
 static NSMutableArray *bcCaptureSessions = [[NSMutableArray alloc] initWithCapacity:250];
 static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapacity:250];
 
@@ -15,7 +20,7 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
 %hookf(OSStatus, AudioUnitProcess, AudioUnit unit, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData) {
     OSStatus orig = %orig;
 
-    if (bcActive) {
+    if (bcActive && !bcMSDForceDisable) {
         AudioComponentDescription unitDescription = {0};
         AudioComponentGetDescription(AudioComponentInstanceGetComponent(unit), &unitDescription);
 
@@ -167,8 +172,49 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
 
 %end
 
+%end
+
+NSMutableArray* BCGetDisabledApps() {
+    NSMutableDictionary *appList = [[NSMutableDictionary alloc] initWithContentsOfFile:BCApplistFile];
+    NSMutableArray *disabledApps = [[NSMutableArray alloc] init];
+    for (NSString *key in appList) {
+        if ([[appList objectForKey:key] boolValue]) {
+            [disabledApps addObject:key];
+        }
+    }
+
+    return disabledApps;
+}
+
+void BCSBCheckIsAppDisabled() {
+    NSMutableArray *disabledApps = BCGetDisabledApps();
+    SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+    if (frontApp) {
+        NSString *currentAppDisplayID = [frontApp displayIdentifier];
+    
+        if ([disabledApps containsObject:currentAppDisplayID]) {
+            BCNotifyDisableMSD();
+        } else {
+            BCNotifyEnableMSD();
+        }
+    }
+}
+
 void HBCBPreferencesChanged() {
     bcActive = BCGetState();
+
+    if (isSpringboard) {
+        BCSBCheckIsAppDisabled();
+    }
+
+    if (isMSD) {
+        return;
+    }
+
+    NSMutableArray *disabledApps = BCGetDisabledApps();
+    if ([disabledApps containsObject:[[NSBundle mainBundle] bundleIdentifier]]) {
+        bcActive = false;
+    }
 
     for (id obj in bcLocationManagers) {
         if (obj) {
@@ -185,12 +231,21 @@ void HBCBPreferencesChanged() {
     }
 }
 
-%end
+void BCMSDDisable() {
+    bcMSDForceDisable = true;
+}
+
+void BCMSDEnable() {
+    bcMSDForceDisable = false;
+}
+
+void BCAppChanged() {
+    BCNotifyAppChange();
+}
 
 %ctor {
     NSArray *blacklist = @[
         @"backboardd",
-        @"SpringBoard",
         @"duetexpertd",
         @"lsd",
         @"nsurlsessiond",
@@ -199,7 +254,8 @@ void HBCBPreferencesChanged() {
         @"com.apple.datamigrator",
         @"CircleJoinRequested",
         @"nanotimekitcompaniond",
-        @"ReportCrash"
+        @"ReportCrash",
+        @"ptpd"
     ];
 
     NSString *processName = [NSProcessInfo processInfo].processName;
@@ -210,13 +266,22 @@ void HBCBPreferencesChanged() {
         }
     }
 
+    isMSD = [@"mediaserverd" isEqualToString:processName];
+    isSpringboard = [@"SpringBoard" isEqualToString:processName];
+
     HBCBPreferencesChanged();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)HBCBPreferencesChanged, (CFStringRef)BCNotification, NULL, kNilOptions);
     
-    if ([@"mediaserverd" isEqualToString:processName]) {
+    if (isSpringboard) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCSBCheckIsAppDisabled, (CFStringRef)BCNotificationAppChange, NULL, kNilOptions);
+        NSLog(@"[BegoneCIA] Loaded - SB.");
+    } else if (isMSD) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCMSDDisable, (CFStringRef)BCNotificationMSDDisable, NULL, kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCMSDEnable, (CFStringRef)BCNotificationMSDEnable, NULL, kNilOptions);
         NSLog(@"[BegoneCIA] Loaded - msd.");
         %init(BCMSD);
     } else {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), NULL, (CFNotificationCallback)BCAppChanged, (CFStringRef)UIApplicationDidBecomeActiveNotification, NULL, kNilOptions);
         NSLog(@"[BegoneCIA] Loaded - ui.");
         %init(BCEverythingElse);
     }
