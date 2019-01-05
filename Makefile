@@ -1,6 +1,8 @@
 clean:
 	@$(MAKE) -C iOS10 clean
 	@$(MAKE) -C iOS11 clean
+	rm -Rf iOS10/packages
+	rm -Rf iOS11/packages
 packages: clean
 	@$(MAKE) -C iOS10 package FINALPACKAGE=1
 	@$(MAKE) -C iOS11 package FINALPACKAGE=1
