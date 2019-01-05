@@ -4,10 +4,13 @@
 #import <CoreLocation/CoreLocation.h>
 #import <AVFoundation/AVFoundation.h>
 #import "../BCCommon.h"
+#import <UIKit/UIButton.h>
 
 static BOOL bcActive = true;
 static NSMutableArray *bcCaptureSessions = [[NSMutableArray alloc] initWithCapacity:250];
 static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapacity:250];
+
+%group BCMSD
 
 %hookf(OSStatus, AudioUnitProcess, AudioUnit unit, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData) {
     OSStatus orig = %orig;
@@ -32,6 +35,10 @@ static NSMutableArray *bcLocationManagers = [[NSMutableArray alloc] initWithCapa
 
     return orig;
 }
+
+%end
+
+%group BCEverythingElse
 
 @interface CLLocationManager(BegoneCIA)
 @property (nonatomic, retain) id bcDelegate;
@@ -178,10 +185,39 @@ void HBCBPreferencesChanged() {
     }
 }
 
+%end
+
 %ctor {
+    NSArray *blacklist = @[
+        @"backboardd",
+        @"SpringBoard",
+        @"duetexpertd",
+        @"lsd",
+        @"nsurlsessiond",
+        @"assertiond",
+        @"ScreenshotServicesService",
+        @"com.apple.datamigrator",
+        @"CircleJoinRequested",
+        @"nanotimekitcompaniond",
+        @"ReportCrash"
+    ];
+
+    NSString *processName = [NSProcessInfo processInfo].processName;
+    for (NSString *process in blacklist) {
+        if ([process isEqualToString:processName]) {
+            NSLog(@"[BegoneCIA] ignored process: %@", processName);
+            return;
+        }
+    }
+
     HBCBPreferencesChanged();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)HBCBPreferencesChanged, (CFStringRef)BCNotification, NULL, kNilOptions);
-
-    NSLog(@"[BegoneCIA] Loaded.");
-    %init;
+    
+    if ([@"mediaserverd" isEqualToString:processName]) {
+        NSLog(@"[BegoneCIA] Loaded - msd.");
+        %init(BCMSD);
+    } else {
+        NSLog(@"[BegoneCIA] Loaded - ui.");
+        %init(BCEverythingElse);
+    }
 }
