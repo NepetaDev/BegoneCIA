@@ -198,6 +198,7 @@ void BCSBCheckIsAppDisabled() {
             BCNotifyEnableMSD();
         }
     }
+    [disabledApps release];
 }
 
 void HBCBPreferencesChanged() {
@@ -215,6 +216,7 @@ void HBCBPreferencesChanged() {
     if ([disabledApps containsObject:[[NSBundle mainBundle] bundleIdentifier]]) {
         bcActive = false;
     }
+    [disabledApps release];
 
     for (id obj in bcLocationManagers) {
         if (obj) {
@@ -268,6 +270,30 @@ void BCAppChanged() {
 
     isMSD = [@"mediaserverd" isEqualToString:processName];
     isSpringboard = [@"SpringBoard" isEqualToString:processName];
+
+    // Someone smarter than me invented this.
+    // https://www.reddit.com/r/jailbreak/comments/4yz5v5/questionremote_messages_not_enabling/d6rlh88/
+    bool shouldLoad = NO;
+    NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
+    NSUInteger count = args.count;
+    if (count != 0) {
+        NSString *executablePath = args[0];
+        if (executablePath) {
+            NSString *processName = [executablePath lastPathComponent];
+            BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound || [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
+            BOOL isFileProvider = [[processName lowercaseString] rangeOfString:@"fileprovider"].location != NSNotFound;
+            BOOL skip = [processName isEqualToString:@"AdSheet"]
+                        || [processName isEqualToString:@"CoreAuthUI"]
+                        || [processName isEqualToString:@"InCallService"]
+                        || [processName isEqualToString:@"MessagesNotificationViewService"]
+                        || [executablePath rangeOfString:@".appex/"].location != NSNotFound;
+            if ((!isFileProvider && isApplication && !skip) || isMSD || isSpringboard) {
+                shouldLoad = YES;
+            }
+        }
+    }
+
+    if (!shouldLoad) return;
 
     HBCBPreferencesChanged();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)HBCBPreferencesChanged, (CFStringRef)BCNotification, NULL, kNilOptions);
