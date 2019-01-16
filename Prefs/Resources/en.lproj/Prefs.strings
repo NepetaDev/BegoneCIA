@@ -1,29 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>ENABLED</key>
-  <string>Enabled</string>
-  <key>DISABLE_IN_CALLS</key>
-  <string>Disable in calls</string>
-  <key>RESPRING</key>
-  <string>Respring</string>
-  <key>ARE_YOU_SURE_TO_RESET_PREFS</key>
-  <string>Are you sure you want to reset all your preferences? This cannot be undone.</string>
-  <key>OK</key>
-  <string>OK</string>
-  <key>CANCEL</key>
-  <string>Cancel</string>
-  <key>RESET_PREFS</key>
-  <string>Restore default settings and respring</string>
-  <key>GITHUB</key>
-  <string>Github</string>
-  <key>SOURCE_CODE</key>
-  <string>Source code</string>
-  <key>DONATE_TO_NEPETA</key>
-  <string>Donate to Nepeta</string>
-  <key>SUPPORT_ME</key>
-  <string>Support me!</string>
-</dict>
-
-</plist>
+{
+  "ENABLED" = "Enabled";
+  "DISABLE_IN_CALLS" = "Disable in calls";
+  "RESPRING" = "Respring";
+  "ARE_YOU_SURE_TO_RESET_PREFS" = "Are you sure you want to reset all your preferences? This cannot be undone.";
+  "OK" = "OK";
+  "CANCEL" = "Cancel";
+  "RESET_PREFS" = "Restore default settings and respring";
+  "GITHUB" = "Github";
+  "SOURCE_CODE" = "Source code";
+  "DONATE_TO_NEPETA" = "Donate to Nepeta";
+  "SUPPORT_ME" = "Support me!";
+}
