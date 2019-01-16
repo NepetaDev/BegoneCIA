@@ -4,11 +4,13 @@
 #import <CoreLocation/CoreLocation.h>
 #import <AVFoundation/AVFoundation.h>
 #import "../BCCommon.h"
+#import "Tweak.h"
 #import <UIKit/UIButton.h>
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SpringBoard.h>
 
 static BOOL bcActive = false;
+static BOOL bcDisableInCalls = true;
 static BOOL bcMSDForceDisable = false;
 static BOOL isMSD = false;
 static BOOL isSpringboard = false;
@@ -202,7 +204,9 @@ void BCSBCheckIsAppDisabled() {
 }
 
 void HBCBPreferencesChanged() {
-    bcActive = BCGetState();
+    HBPreferences *preferences = [[HBPreferences alloc] initWithIdentifier:BCPreferencesIdentifier];
+	bcActive = [([preferences objectForKey:BCEnabled] ?: @(false)) boolValue];
+	bcDisableInCalls = [([preferences objectForKey:@"DisableInCalls"] ?: @(true)) boolValue];
 
     if (isSpringboard) {
         BCSBCheckIsAppDisabled();
@@ -244,6 +248,36 @@ void BCMSDEnable() {
 void BCAppChanged() {
     BCNotifyAppChange();
 }
+
+%group BCSpringboard
+
+%hook SBTelephonyManager
+
+-(void)callEventHandler:(NSNotification*)arg1 {
+    if (arg1 && arg1.object) {
+        TUProxyCall *call = arg1.object;
+        /*
+            call.status:
+            1 - call established
+            3 - outgoing connecting
+            4 - incoming ringing
+            5 - disconnecting
+            6 - disconnected
+            // The above is stolen from: https://github.com/laoyur/CallKiller-iOS/blob/master/callkiller/callkiller.xm
+        */
+
+        if (call.status == 1 && bcDisableInCalls) {
+            BCNotifyDisableMSD();
+        } else if (call.status == 5 || call.status == 6) {
+            BCSBCheckIsAppDisabled();
+        }
+    }
+    %orig;
+}
+
+%end
+
+%end
 
 %ctor {
     NSArray *blacklist = @[
@@ -301,6 +335,7 @@ void BCAppChanged() {
     if (isSpringboard) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCSBCheckIsAppDisabled, (CFStringRef)BCNotificationAppChange, NULL, kNilOptions);
         NSLog(@"[BegoneCIA] Loaded - SB.");
+        %init(BCSpringboard);
     } else if (isMSD) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCMSDDisable, (CFStringRef)BCNotificationMSDDisable, NULL, kNilOptions);
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)BCMSDEnable, (CFStringRef)BCNotificationMSDEnable, NULL, kNilOptions);

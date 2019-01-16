@@ -4,6 +4,8 @@
 <dict>
   <key>ENABLED</key>
   <string>Enabled</string>
+  <key>DISABLE_IN_CALLS</key>
+  <string>Disable in calls</string>
   <key>RESPRING</key>
   <string>Respring</string>
   <key>ARE_YOU_SURE_TO_RESET_PREFS</key>
