@@ -192,7 +192,7 @@ void BCSBCheckIsAppDisabled() {
     NSMutableArray *disabledApps = BCGetDisabledApps();
     SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
     if (frontApp) {
-        NSString *currentAppDisplayID = [frontApp displayIdentifier];
+        NSString *currentAppDisplayID = [frontApp bundleIdentifier];
     
         if ([disabledApps containsObject:currentAppDisplayID]) {
             BCNotifyDisableMSD();

@@ -1,3 +1,5 @@
+TARGET = iphone:clang:11.2:9.0
+
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = BegoneCIAPrefs
